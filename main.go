@@ -41,7 +41,7 @@ func evolvePixel(c color.Color, ns []color.Color) color.Color {
 }
 
 func neighbours(p image.Point) []image.Point {
-	pts := make([]image.Point, 8)
+	pts := make([]image.Point, 0, 8)
 
 	pts = append(pts, image.Point{p.X - 1, p.Y - 1})
 	pts = append(pts, image.Point{p.X + 1, p.Y - 1})
@@ -92,13 +92,15 @@ func save(i image.Image, nth int) {
 	name := "evolution.t" + fmt.Sprintf("%03d", nth) + ".png"
 
 	file, err := os.Create(name)
-	defer file.Close()
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer file.Close()
 
 	fmt.Printf("Creating: %s\n", name)
-	png.Encode(file, i)
+	if err := png.Encode(file, i); err != nil {
+		log.Fatal(err)
+	}
 }
 
 func main() {
