@@ -8,6 +8,7 @@ import (
 	_ "image/png"
 	"log"
 	"os"
+	"runtime"
 )
 
 var black = color.Gray{0}
@@ -30,7 +31,7 @@ func countAlive(ns []color.Color) int {
 	return m
 }
 
-func evolvePixel(c color.Color, ns []color.Color) color.Color {
+func calc(c color.Color, ns []color.Color) color.Color {
 	alive_n := countAlive(ns)
 
 	if alive_n == 3 || (alive(c) && alive_n == 2) {
@@ -56,7 +57,17 @@ func neighbours(p image.Point) []image.Point {
 	return pts
 }
 
-func pixget(i image.Image, bounds image.Rectangle) func(x, y int) color.Color {
+func evolve(i, j int, at func(int, int) color.Color, set func(int, int, color.Color), done chan bool) {
+	ns := make([]color.Color, 0)
+	for _, n := range neighbours(image.Point{i, j}) {
+		ns = append(ns, at(n.X, n.Y))
+	}
+
+	set(i, j, calc(at(i, j), ns))
+	done <- true
+}
+
+func incarcerate(i image.Image, bounds image.Rectangle) func(x, y int) color.Color {
 	return func(x, y int) color.Color {
 		if image.Pt(x, y).In(bounds) {
 			return i.At(x, y)
@@ -66,23 +77,24 @@ func pixget(i image.Image, bounds image.Rectangle) func(x, y int) color.Color {
 	}
 }
 
-func evolve(input image.Image) image.Image {
+func tick(in image.Image) image.Image {
 	var (
-		out   = image.NewGray(input.Bounds())
+		out   = image.NewGray(in.Bounds())
 		bound = out.Bounds()
-		at    = pixget(input, bound)
-		ns    = make([]color.Color, 0)
+		count = 0
+		joins = 0
+		good  = make(chan bool, 4096)
 	)
 
 	for i := bound.Min.X; i < bound.Max.X; i++ {
 		for j := bound.Min.Y; j < bound.Max.Y; j++ {
-			ns = nil
-			for _, n := range neighbours(image.Point{i, j}) {
-				ns = append(ns, at(n.X, n.Y))
-			}
-
-			out.Set(i, j, evolvePixel(at(i, j), ns))
+			count++
+			go evolve(i, j, incarcerate(in, bound), out.Set, good)
 		}
+	}
+
+	for ; joins < count; joins++ {
+		<-good
 	}
 
 	return out
@@ -104,13 +116,15 @@ func save(i image.Image, nth int) {
 }
 
 func main() {
+	runtime.GOMAXPROCS(runtime.NumCPU())
+
 	target, _, err := image.Decode(os.Stdin)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	for i := 0; ; i++ {
+	for i := 0; i < 20; i++ {
 		save(target, i)
-		target = evolve(target)
+		target = tick(target)
 	}
 }
