@@ -5,7 +5,6 @@ import (
 	"image"
 	"image/color"
 	"image/png"
-	_ "image/png"
 	"log"
 	"os"
 	"runtime"
