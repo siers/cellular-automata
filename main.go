@@ -123,7 +123,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	for i := 0; i < 20; i++ {
+	for i := 0; ; i++ {
 		save(target, i)
 		target = tick(target)
 	}
