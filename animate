@@ -1,0 +1,5 @@
+#!/bin/sh
+
+which convert > /dev/null || ( echo Couldn\'t find \`convert\': get imagemagick. ; exit )
+
+convert -delay 20 -loop 0 evolution*.png evolution.gif
